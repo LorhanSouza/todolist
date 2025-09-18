@@ -31,14 +31,16 @@ public class FilterTaskAuth extends OncePerRequestFilter{
         String password = credentials[1]; //Guarda a senha
         //Validar usuário
         if(this.userRepository.findByUsername(username) == null){
-            response.sendError(401); //Se não achar o username, o usuári não está autorizado a entrar
+            response.sendError(401); //Se não achar o username, o usuário não está autorizado a entrar
         }else{
-            BCrypt.verifyer().verify(password.toCharArray(), user.getPassword());
             //Validar senha
-
-            //Segue viagem
-        
-            filterChain.doFilter(request, response);
+            var passwordVerify = BCrypt.verifyer().verify(password.toCharArray(), user.getPassword());
+            if (passwordVerify.verified) {
+                //Segue viagem
+                filterChain.doFilter(request, response);
+            }else{
+                response.sendError(401); //Se não bater a senha, o usuário não está autorizado a entrar
+            }
         }
         
     }
