@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import br.com.wmtrading.todolist.utils.Utils;
 import jakarta.servlet.http.HttpServletRequest;
 
 @RestController
@@ -53,16 +54,22 @@ public class TaskController {
 
     @PutMapping("/{id}")
     public ResponseEntity updateTask (@RequestBody TaskModel taskModel, HttpServletRequest request, @PathVariable UUID id){
-        var taskTEMP = this.taskRepository.findById(id); // Pega a tarefa com o id passado no caminho da rota
+        var taskTEMP = this.taskRepository.findById(id).orElse(null); // Pega a tarefa com o id passado no caminho da rota, se não tiver retorna null
+        
+        var idUser = request.getAttribute("idUser"); // Pega o id do usuário na sessão
+
         if(taskTEMP == null){
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Tarefa não existe!");
         }
-        
-        var idUser = request.getAttribute("idUser"); /* Pega o id do usuário na requisição */
-        taskModel.setIdUser((UUID)idUser); // Seta do id do usuário convertendo a variável para o tipo UUID (não vem do corpo da requisição assim)
 
-        TaskModel taskCreated = this.taskRepository.save(taskModel); /* Salva o modelo recebido no corpo da requisição em JSON no repositório */
-        return ResponseEntity.status(HttpStatus.CREATED).body(taskCreated);
+        if(!taskTEMP.getIdUser().equals(idUser)){
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Usuário não é o mesmo que criou a tarefa!"); //Acesso não autorizado
+        }
+
+        Utils.copyNonNullProperties(taskModel, taskTEMP);// Copia as propriedades não nulas, filtrando internamente as nulas que vem na requisição de Update
+
+        this.taskRepository.save(taskTEMP); /* Salva o modelo recebido no corpo da requisição em JSON no repositório */
+        return ResponseEntity.status(HttpStatus.OK).body(taskTEMP);
     }
 
     /**
